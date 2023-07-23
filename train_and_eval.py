@@ -1,7 +1,7 @@
 import torch
 import distributed_utils as utils
 
-def criterion(output, target):
+def loss_fn(train_output_image, train_target_image):
     
     return loss
 
@@ -16,11 +16,18 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     
-    for images, targets in metric_logger.log_every(data_loader, 10, header):
+    for train_input_image, train_target_image in metric_logger.log_every(data_loader, 10, header):
         image, target = image.to(device), target.to(device)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
-            output = model(image)
-            loss = criterion(output, target)
+            train_output_image = model(train_input_image)
+            train_loss = loss_fn(train_output_image, train_target_image)
+            
+            
+            with torch.no_grad():
+                val_output_image = model(val_input_image)
+                val_loss = loss_fn(val_output_image, val_target_image)
+                assert val_loss.requires_grad == False
+            
             
         optimizer.zero_grad()
         
@@ -29,7 +36,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
             scaler.step(optimizer)
             scaler.update()
         else:
-            loss.backward()
+            train_loss.backward()
             optimizer.step()
          
         lr_scheduler.step()
