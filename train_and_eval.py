@@ -3,6 +3,13 @@ import distributed_utils as utils
 import numpy as np
 
 def loss_fn(output_image, target_image):
+    # image has two dim (amp, phase)
+    
+    y_amp_hat = output_image[..., 0]
+    y_phase_hat = output_image[..., 1]
+    
+    y_amp = target_image[..., 0]
+    y_phase = target_image[..., 1]
     
     loss = 1/2 *(np.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
     
