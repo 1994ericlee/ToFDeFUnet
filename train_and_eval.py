@@ -1,11 +1,19 @@
 import torch
 import distributed_utils as utils
+import numpy as np
 
-def loss_fn(train_output_image, train_target_image):
+def loss_fn(output_image, target_image):
+    
+    loss = 1/2 *(np.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
     
     return loss
 
 def evaluate(model, data_loader, device):
+    model.eval()
+    with torch.no_grad():
+            val_output_image = model(val_input_image)
+            val_loss = loss_fn(val_output_image, val_target_image)
+            assert val_loss.requires_grad == False
     
     return loss
 
@@ -21,12 +29,6 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
         with torch.cuda.amp.autocast(enabled = scaler is not None):
             train_output_image = model(train_input_image)
             train_loss = loss_fn(train_output_image, train_target_image)
-            
-            
-            with torch.no_grad():
-                val_output_image = model(val_input_image)
-                val_loss = loss_fn(val_output_image, val_target_image)
-                assert val_loss.requires_grad == False
             
             
         optimizer.zero_grad()
