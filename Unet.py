@@ -13,13 +13,15 @@ class Encoder(nn.Module):
         if complex:
             conv = complex_nn.ComplexConv2d
             bn = complex_nn.ComplexBatchNorm2d
+            relu = complex_nn.ComplexReLU
         else:
             conv = nn.Conv2d
             bn = nn.BatchNorm2d
+            relu = nn.ReLU
             
         self.conv = conv(in_channels, out_channels, kernel_size, stride, padding, padding_mode)
         self.bn = bn(out_channels)
-        self.relu = nn.LeakyReLU(inplace=True)
+        self.relu = relu(inplace=True)
         
     def forward(self, x):
         x = self.conv(x)
@@ -35,13 +37,15 @@ class Decoder(nn.Module):
         if complex:
             tconv = complex_nn.ComplexConvTranspose2d
             bn = complex_nn.ComplexBatchNorm2d
+            relu = complex_nn.ComplexReLU
         else:
             tconv = nn.ConvTranspose2d
             bn = nn.BatchNorm2d
+            relu = nn.ReLU
             
         self.tconv = tconv(in_channels, out_channels, kerneal_size, stride, padding)
         self.bn = bn(out_channels)
-        self.relu = nn.LeakyReLU(inplace=True)
+        self.relu = relu(inplace=True)
     
     def forward(self, x):
         x = self.tconv(x)

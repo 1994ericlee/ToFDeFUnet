@@ -43,3 +43,13 @@ class ComplexBatchNorm2d(nn.Module):
         
         return output
     
+class ComplexReLU(nn.Module):
+    
+    def __init__(self, inplace=False):
+        super().__init__()
+        
+        self.relu = nn.ReLU(inplace)
+    def forward(self, x):
+        return self.relu(x.real).type(torch.complex64) + 1j * self.relu(x.imag).type(torch.complex64)
+    
+    
