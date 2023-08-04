@@ -61,7 +61,7 @@ class TrainingApp:
         return optimizer
 
     def initTrainDL(self):
-        train_dataset = ToFDataset(isValSet_bool=False)
+        train_dataset = ToFDataset(cli_args.train_path, train=True, transforms=DataTransform)
 
         batch_size = self.cli_args.batch_size
         if self.use_cuda:
@@ -75,7 +75,7 @@ class TrainingApp:
         return train_DL
 
     def initValDL(self):
-        val_dataset = ToFDataset(isValSet_bool=True)
+        val_dataset = ToFDataset(cli_args.train_path, train=False)
 
         batch_size = self.cli_args.batch_size
         if self.use_cuda:
@@ -136,10 +136,9 @@ def main(args):
     results_file = "results{}.txt".format(
         datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
-    train_dataset = DriveDataset(args.train_path,
-                                 )
+    train_dataset = ToFDataset(args.train_path, train=True, transforms=Augmentation())
 
-    val_dataset = DriveDataset(args.val_path,)
+    val_dataset = ToFDataset(args.val_path, train=False)
 
     train_loader = DataLoader(train_dataset,
                               batch_size=batch_size,
