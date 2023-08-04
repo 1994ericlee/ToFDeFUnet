@@ -2,7 +2,17 @@ import datetime
 import os
 import torch
 import torch.utils.data.dataloader as DataLoader
+import sys
+import argparse
 
+from model import Unet
+from dataset import ToFDataset
+from util.logconf import logging
+
+log = logging.getLogger(__name__)
+# log.setLevel(logging.WARN)
+log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 class TrainingApp:
     def __init__(self, sys_argv=None):
