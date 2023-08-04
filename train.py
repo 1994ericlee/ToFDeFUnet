@@ -1,4 +1,5 @@
 import datetime
+import time
 import os
 import torch
 import torch.utils.data.dataloader as DataLoader
@@ -6,7 +7,8 @@ import sys
 import argparse
 
 from model import Unet
-from dataset import ToFDataset
+from dataset import ToFDataset, DataTransform
+from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
 from util.logconf import logging
 
 log = logging.getLogger(__name__)
@@ -39,15 +41,18 @@ class TrainingApp:
                             )
 
         self.cli_args = parser.parse_args(sys_argv)
-
+        self.path = './data'
+        self.batch_size = 20
+        self.epochs = 50
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
-
+        self.num_workers = 4
         self.model = self.initModel()
         self.optimizer = self.initOptimizer()
+      
 
     def initModel(self):
-        model = Unet()
+        model = Unet(complex=True)
         if self.use_cuda:
             log.info("Using CUDA; {} devices.".format(
                 torch.cuda.device_count()))
@@ -59,31 +64,32 @@ class TrainingApp:
     def initOptimizer(self):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
         return optimizer
+    
 
     def initTrainDL(self):
-        train_dataset = ToFDataset(cli_args.train_path, train=True, transforms=DataTransform)
+        train_dataset = ToFDataset(self.path, train=True)
 
-        batch_size = self.cli_args.batch_size
+        batch_size = self.batch_size
         if self.use_cuda:
             batch_size *= torch.cuda.device_count()
 
-        train_DL = DataLoader(train_dataset,
+        train_DL = torch.utils.data.DataLoader(train_dataset,
                               batch_size=batch_size,
                               shuffle=True,
-                              num_workers=self.cli_args.num_workers,
+                              num_workers=self.num_workers,
                               pin_memory=self.use_cuda)
         return train_DL
 
     def initValDL(self):
-        val_dataset = ToFDataset(cli_args.train_path, train=False)
+        val_dataset = ToFDataset(self.path, train=False)
 
-        batch_size = self.cli_args.batch_size
+        batch_size = self.batch_size
         if self.use_cuda:
             batch_size *= torch.cuda.device_count()
 
-        val_DL = DataLoader(val_dataset,
+        val_DL = torch.utils.data.DataLoader(val_dataset,
                             batch_size=batch_size,
-                            num_workers=self.cli_args.num_workers,
+                            num_workers=self.num_workers,
                             pin_memory=self.use_cuda)
         return val_DL
 
@@ -96,9 +102,11 @@ class TrainingApp:
         val_DL = self.initValDL()
 
         start_time = time.time()
-        for epoch_ndx in range(1, self.cli_args.epochs + 1):
+        
+        self.lr_scheduler = create_lr_scheduler(self.optimizer, num_step=len(train_DL), epochs=self.epochs, warmup=True)
+        for epoch_ndx in range(1, self.epochs + 1):
             mean_loss, lr = train_one_epoch(
-                self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.cli_args.lr_scheduler)
+                self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
 
             with open(results_file, "a") as f:
@@ -109,7 +117,7 @@ class TrainingApp:
 
             save_file = {"model": self.model.state_dict(),
                         "optimizer": self.optimizer.state_dict(),
-                        "lr_scheduler": lr_scheduler.state_dict(),
+                        "lr_scheduler": self.lr_scheduler.state_dict(),
                         "epoch": epoch,
                         "args": args}
 
@@ -162,7 +170,7 @@ def main(args):
     start_time = time.time()
     for epoch in range(args.epochs):
         mean_loss, lr = train_one_epoch(
-            model, optimizer, train_loader, device, epoch, args.lr_scheduler)
+            model, optimizer, train_loader, device, epoch, lr_scheduler)
 
         with open(results_file, "a") as f:
             train_info = f"[epoch: {epoch}]\n" \

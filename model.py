@@ -61,6 +61,7 @@ class Unet(nn.Module):
         if complex:
             model_complexity = int(model_complexity / 1.414) 
         
+        self.complex = complex
         self.set_size(model_complexity, model_depth, input_channels)
         self.encoders = []
         self.model_length = model_depth //2
@@ -97,13 +98,14 @@ class Unet(nn.Module):
         self.decoders = nn.ModuleList(self.decoders)
         self.encoders = nn.ModuleList(self.encoders)
            
-    def forward(self, bd):
-        if self.complex:
-            x = bd['X']
+    def forward(self, x):
         xs = []
         for i, encoder in enumerate(self.encoders):
             xs.append(x)
+            print("x{}".format(i), x.shape)
             x = encoder(x)
+        print(x.shape)
+        
         p = x
         for i, decoder in enumerate(self.decoders):
             p = decoder(p)

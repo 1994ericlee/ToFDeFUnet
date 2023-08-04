@@ -31,11 +31,11 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     
-    for train_input_image, train_target_image in metric_logger.log_every(data_loader, 10, header):
-        image, target = image.to(device), target.to(device)
+    for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
+        image, target = train_input_tof.to(device), train_target_tof.to(device)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
-            train_output_image = model(train_input_image)
-            train_loss = loss_fn(train_output_image, train_target_image)
+            output = model(image)
+            train_loss = loss_fn(output, target)
             
             
         optimizer.zero_grad()
@@ -53,7 +53,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(loss=loss.item(), lr=lr)
     
-return metric_logger.meters['loss'].global_avg, lr 
+    return metric_logger.meters['loss'].global_avg, lr 
 
 def create_lr_scheduler(optimizer, num_step:int, epochs:int, warmup=True, warmup_epochs=1, warmup_factor=1e-3):
     assert num_step > 0 and epochs > 0
