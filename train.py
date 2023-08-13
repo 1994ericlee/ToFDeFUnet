@@ -5,9 +5,10 @@ import torch
 import torch.utils.data.dataloader as DataLoader
 import sys
 import argparse
+import transforms as T
 
 from model import Unet
-from dataset import ToFDataset, DataTransform
+from dataset import ToFDataset
 from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
 from util.logconf import logging
 
@@ -16,37 +17,79 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 log.setLevel(logging.DEBUG)
 
+class PresetTrain:
+    def __init__(self, base_size, crop_size, hflip_prob=0.5, vflip_prob=0.5,
+                 mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        min_size = int(0.5 * base_size)
+        max_size = int(1.2 * base_size)
+
+        # trans = [T.RandomResize(min_size, max_size)]
+        trans = []
+        if hflip_prob > 0:
+            trans.append(T.RandomHorizontalFlip(hflip_prob))
+        if vflip_prob > 0:
+            trans.append(T.RandomVerticalFlip(vflip_prob))
+        trans.extend([
+            T.CenterCrop(crop_size),
+            
+            # T.Normalize(mean=mean, std=std),
+        ])
+        self.transforms = T.Compose(trans)
+
+    def __call__(self, img, target):
+        return self.transforms(img, target)
+
+
+class PresetEval:
+    def __init__(self, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        self.transforms = T.Compose([
+            T.ToTensor(),
+            # T.Normalize(mean=mean, std=std),
+        ])
+
+    def __call__(self, img, target):
+        return self.transforms(img, target)
+
+def get_transform(train, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    base_size = 565
+    crop_size = 320
+
+    if train:
+        return PresetTrain(base_size, crop_size, mean=mean, std=std)
+    else:
+        return PresetEval(mean=mean, std=std)
+
 class TrainingApp:
     def __init__(self, sys_argv=None):
 
         if sys_argv is None:
             sys_argv = sys.argv[1:]
 
-        parser = argparse.ArgumentParser()
+        # parser = argparse.ArgumentParser()
 
-        parser.add_argument('--num-workers',
-                            help='Number of worker processes for background data loading',
-                            default=8,
-                            type=int,
-                            )
-        parser.add_argument('--batch-size',
-                            help='Batch size to use for training',
-                            default=32,
-                            type=int,
-                            )
-        parser.add_argument('--epochs',
-                            help='Number of epochs to train for',
-                            default=1,
-                            type=int,
-                            )
+        # parser.add_argument('--num-workers',
+        #                     help='Number of worker processes for background data loading',
+        #                     default=0,
+        #                     type=int,
+        #                     )
+        # parser.add_argument('--batch-size',
+        #                     help='Batch size to use for training',
+        #                     default=32,
+        #                     type=int,
+        #                     )
+        # parser.add_argument('--epochs',
+        #                     help='Number of epochs to train for',
+        #                     default=1,
+        #                     type=int,
+        #                     )
 
-        self.cli_args = parser.parse_args(sys_argv)
+        # self.cli_args = parser.parse_args(sys_argv)
         self.path = './data'
         self.batch_size = 20
         self.epochs = 50
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
-        self.num_workers = 4
+        self.num_workers = 0
         self.model = self.initModel()
         self.optimizer = self.initOptimizer()
       
@@ -66,8 +109,8 @@ class TrainingApp:
         return optimizer
     
 
-    def initTrainDL(self):
-        train_dataset = ToFDataset(self.path, train=True)
+    def initTrainDL(self, mean, std):
+        train_dataset = ToFDataset(self.path, train=True, transforms=get_transform(train=True, mean=mean, std=std))
 
         batch_size = self.batch_size
         if self.use_cuda:
@@ -80,8 +123,8 @@ class TrainingApp:
                               pin_memory=self.use_cuda)
         return train_DL
 
-    def initValDL(self):
-        val_dataset = ToFDataset(self.path, train=False)
+    def initValDL(self, mean, std):
+        val_dataset = ToFDataset(self.path, train=False, transforms=get_transform(train=False, mean=mean, std=std))
 
         batch_size = self.batch_size
         if self.use_cuda:
@@ -94,12 +137,15 @@ class TrainingApp:
         return val_DL
 
     def main(self):
-        log.info("Starting {}, {}".format(type(self).__name__, self.cli_args))
+        # log.info("Starting {}, {}".format(type(self).__name__, self.cli_args))
         results_file = "results{}.txt".format(
         datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
-        train_DL = self.initTrainDL()
-        val_DL = self.initValDL()
+        mean = (0.709, 0.381, 0.224)
+        std = (0.127, 0.079, 0.043)
+
+        train_DL = self.initTrainDL(mean, std)
+        val_DL = self.initValDL(mean, std)
 
         start_time = time.time()
         

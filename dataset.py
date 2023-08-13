@@ -2,20 +2,23 @@ from torchvision import transforms as T
 from torch.utils.data import Dataset
 import os
 import numpy as np
+import torch
 
-class DataTransform:
-    def __init__(self):
-        # self.transforms = T.Compose([
-        #     T.RandomCrop(320),
-        #     T.ToTensor(),
-        #     T.RandomHorizontalFlip()
-        # ])
+
+# class DataTransform:
+#     def __init__(self, train, target):
+#         self.transforms = T.Compose([
+#             T.CenterCrop(320),
+#             T.RandomHorizontalFlip(),
+#             T.RandomVerticalFlip(),
+#             T.ToTensor(),
+#         ])
         
-        trans=[T.RandomCrop(320), T.ToTensor(), T.RandomHorizontalFlip()]
-        self.transforms = T.Compose(trans)
+#         # trans=[T.RandomCrop(320), T.ToTensor(), T.RandomHorizontalFlip()]
+#         # self.transforms = T.Compose(trans)
         
-    def __call__(self, x, y):
-        return self.transforms(x, y)
+#     def __call__(self, x, y):
+#         return self.transforms(x, y)
         
 
 class ToFDataset(Dataset):
@@ -46,6 +49,7 @@ class ToFDataset(Dataset):
         self.clear_tof_pha_npys_path = [os.path.join(self.clear_tof_dir, p) for p in self.clear_tof_pha_names]
         self.fog_tof_amp_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_amp_names]
         self.fog_tof_pha_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_pha_names]
+        
         self.transforms = transforms
         
     def __getitem__(self, idx):
@@ -54,17 +58,20 @@ class ToFDataset(Dataset):
         fog_tof_amp_npy = np.load(self.fog_tof_amp_npys_path[idx])
         fog_tof_pha_npy = np.load(self.fog_tof_pha_npys_path[idx])
         
-        x_amp = np.matrix(fog_tof_amp_npy)
-        y_amp = np.matrix(clear_tof_amp_npy)
+        x_amp = torch.from_numpy(fog_tof_amp_npy)
+        y_amp = torch.from_numpy(clear_tof_amp_npy)
         
-        x_phase = np.matrix(fog_tof_pha_npy)
-        y_phase = np.matrix(clear_tof_pha_npy)
+        x_phase = torch.from_numpy(fog_tof_pha_npy)
+        y_phase = torch.from_numpy(clear_tof_pha_npy)
         
-        x = np.concatenate((x_amp, x_phase), axis=0)
-        y = np.concatenate((y_amp, y_phase), axis=0)
+        x = torch.stack((x_amp, x_phase), axis=0)
+        y = torch.stack((y_amp, y_phase), axis=0)
+        
+        
         
         if self.transforms:
             x, y = self.transforms(x, y)
+            print(x.size(), y.size())   
         return x, y
     
     def __len__(self):

@@ -102,7 +102,7 @@ class Unet(nn.Module):
         xs = []
         for i, encoder in enumerate(self.encoders):
             xs.append(x)
-            print("x{}".format(i), x.shape)
+            print("model.py:x{}".format(i), x.shape)
             x = encoder(x)
         print(x.shape)
         
