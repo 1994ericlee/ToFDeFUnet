@@ -32,7 +32,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     header = 'Epoch: [{}]'.format(epoch)
     
     for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
-        image, target = train_input_tof.to(device), train_target_tof.to(device)
+        image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
             output = model(image)
             train_loss = loss_fn(output, target)

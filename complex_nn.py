@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+def apply_complex(fr, fi, input, dtype = torch.complex64):
+    return (fr(input.real)-fi(input.imag)).type(dtype) \
+            + 1j*(fr(input.imag)+fi(input.real)).type(dtype)
+
 class ComplexConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
         super().__init__()
@@ -12,9 +16,9 @@ class ComplexConv2d(nn.Module):
         
     def forward(self, x):
         #W ∗h = (A∗x−B ∗y)+i(B ∗x+A∗y). 
-        real = self.conv_real(x[..., 0]) - self.conv_imag(x[..., 1])
-        imaginary = self.conv_imag(x[..., 0]) + self.conv_real(x[..., 1])
-        output = torch.stack([real, imaginary], dim=-1)
+        # real = self.conv_real(x[:,0,:,:]) - self.conv_imag(x[:,1,:,:])
+        # imaginary = self.conv_imag(x[:,1,:,:]) + self.conv_real(x[:,0,:,:])
+        # output = torch.stack([real, imaginary], dim=0)
         
 class ComplexConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, output_padding=0, groups=1, bias=True, dilation=1):

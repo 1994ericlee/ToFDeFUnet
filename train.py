@@ -95,7 +95,7 @@ class TrainingApp:
       
 
     def initModel(self):
-        model = Unet(complex=True)
+        model = Unet(input_channels=1, complex=True)
         if self.use_cuda:
             log.info("Using CUDA; {} devices.".format(
                 torch.cuda.device_count()))
