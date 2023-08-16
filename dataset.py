@@ -64,14 +64,16 @@ class ToFDataset(Dataset):
         x_phase = torch.from_numpy(fog_tof_pha_npy)
         y_phase = torch.from_numpy(clear_tof_pha_npy)
         
-        x = torch.stack((x_amp, x_phase), dim= -1)
-        y = torch.stack((y_amp, y_phase), dim= -1)
+        # Acos(phi) + iAsin(phi)
         
-        complex_x = torch.view_as_complex(x)
-        complex_y = torch.view_as_complex(y)
+        # x = torch.stack((x_amp, x_phase), dim= -1)
+        # y = torch.stack((y_amp, y_phase), dim= -1)
         
-        complex_x = complex_x.unsqueeze(0)
-        complex_y = complex_y.unsqueeze(0)
+        # complex_x = torch.view_as_complex(x)
+        # complex_y = torch.view_as_complex(y)
+        
+        # complex_x = complex_x.unsqueeze(0)
+        # complex_y = complex_y.unsqueeze(0)
         
         
         if self.transforms:

@@ -5,15 +5,26 @@ import numpy as np
 def loss_fn(output_image, target_image):
     # image has two dim (amp, phase)
     
-    y_amp_hat = output_image[..., 0]
-    y_phase_hat = output_image[..., 1]
+    y_amp_hat = output_image.real
+    y_phase_hat = output_image.imag
     
-    y_amp = target_image[..., 0]
-    y_phase = target_image[..., 1]
+    y_amp = target_image.real
+    y_phase = target_image.imag
     
-    loss = 1/2 *(np.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
+    loss = 1/2 *(torch.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
+    loss[torch.isinf(loss)] = 0
+    batch_losses = []
     
-    return loss
+    for batch_idx in range(loss.shape[0]):
+    # 获取当前 batch 的损失值张量切片
+        batch_loss_slice = loss[batch_idx, 0, :, :]
+    
+    # 计算损失值的平均值
+        batch_loss = torch.mean(batch_loss_slice)
+        batch_losses.append(batch_loss)
+        
+    total_loss = torch.stack(batch_losses).sum()
+    return total_loss
 
 def evaluate(model, data_loader, device):
     model.eval()
