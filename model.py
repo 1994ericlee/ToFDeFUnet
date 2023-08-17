@@ -190,16 +190,16 @@ class Unet(nn.Module):
         xs = []
         for i, encoder in enumerate(self.encoders):
             xs.append(x)
-            print("model.py:x{}".format(i), x.shape)
+            # print("model.py:x{}".format(i), x.shape)
             x = encoder(x)
-        print(x.shape)
+        # print(x.shape)
         
         p = x
         
  
         for i, decoder in enumerate(self.decoders):
             p = decoder(p, xs[4 -i])
-            print("model.py:p{}".format(i), p.shape)
+            # print("model.py:p{}".format(i), p.shape)
             if i == self.model_length - 1:
                 break
             
@@ -259,3 +259,58 @@ class Unet(nn.Module):
                                      (1,1),
                                      (1,1)]
                                      
+                                     
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.channels = channels
+        self.conv1 = cl.ComplexConv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = cl.ComplexConv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        
+    def forward(self, x):
+        y = self.conv1(x)
+        y = cl.complex_relu(y)
+        y = self.conv2(y)
+        return cl.complex_relu(x + y)
+
+class SimpleNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        conv = cl.ComplexConv2d
+        bn = cl.ComplexBatchNorm2d   
+        tconv = cl.ComplexConvTranspose2d
+        
+        self.conv1 = conv(1, 32, kernel_size=3, stride=1, padding=1)
+        self.bn1 = bn(32, track_running_stats=False)
+        self.conv2 = conv(32, 64, kernel_size=3, stride=1, padding=1)
+        self.bn2 = bn(64, track_running_stats=False)
+        self.tconv1 = tconv(64, 32, kernel_size=4, stride=2, padding=1)
+        self.tconv2 = tconv(32, 1, kernel_size=4, stride=2, padding=1)
+        
+        self.rblock1 = ResidualBlock(32)
+        self.rblock2 = ResidualBlock(64)
+        
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = cl.complex_relu(x)
+        x = cl.complex_max_pool2d(x, kernel_size=2, stride=2)
+        x = self.rblock1(x)
+        
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = cl.complex_relu(x)
+        x = cl.complex_max_pool2d(x, kernel_size=2, stride=2)
+        x = self.rblock2(x)
+        
+        x = self.tconv1(x)
+        x = cl.complex_relu(x)
+        x = self.tconv2(x)
+        x = cl.complex_relu(x)
+        
+        return x
+    
+         
+        
+                                          

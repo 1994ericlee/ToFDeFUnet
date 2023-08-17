@@ -44,21 +44,12 @@
 # a("222")
 
 import numpy as np
+A = 2
+pha = np.pi*2
 
-# 假设损失值 tensor 的形状为 (4, 1, 320, 320)
-loss_tensor = np.random.random((4, 1, 320, 320))  # 这里使用随机生成的示例数据
-
-# 计算每个 batch 的平均损失值
-batch_losses = []
-
-for batch_idx in range(loss_tensor.shape[0]):
-    # 获取当前 batch 的损失值张量切片
-    batch_loss_slice = loss_tensor[batch_idx, 0, :, :]
-    
-    # 计算损失值的平均值
-    batch_loss = np.mean(batch_loss_slice)
-    batch_losses.append(batch_loss)
-
-# 打印每个 batch 的平均损失值
-for batch_idx, loss in enumerate(batch_losses):
-    print(f"Batch {batch_idx + 1}: Average Loss = {loss}")
+s = A * np.exp(1j * pha)
+b = A * np.cos(pha) + 1j * A * np.sin(pha)
+x = np.cos(2*np.pi)
+x = np.sin
+print(s)
+print(x)

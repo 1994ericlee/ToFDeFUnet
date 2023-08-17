@@ -58,28 +58,30 @@ class ToFDataset(Dataset):
         fog_tof_amp_npy = np.load(self.fog_tof_amp_npys_path[idx])
         fog_tof_pha_npy = np.load(self.fog_tof_pha_npys_path[idx])
         
+        clear_tof_amp_npy = np.where(clear_tof_amp_npy == 0, 1, clear_tof_amp_npy)
+        fog_tof_amp_npy = np.where(fog_tof_amp_npy == 0, 1, fog_tof_amp_npy)
+        
         x_amp = torch.from_numpy(fog_tof_amp_npy)
         y_amp = torch.from_numpy(clear_tof_amp_npy)
         
         x_phase = torch.from_numpy(fog_tof_pha_npy)
         y_phase = torch.from_numpy(clear_tof_pha_npy)
         
-        # Acos(phi) + iAsin(phi)
+        x_phase = x_phase + np.pi
+        y_phase = y_phase + np.pi
         
-        # x = torch.stack((x_amp, x_phase), dim= -1)
-        # y = torch.stack((y_amp, y_phase), dim= -1)
+        complex_x = x_amp * torch.exp(1j * x_phase)
+        complex_y = y_amp * torch.exp(1j * y_phase)   
         
-        # complex_x = torch.view_as_complex(x)
-        # complex_y = torch.view_as_complex(y)
+        residual = complex_x - complex_y     
         
-        # complex_x = complex_x.unsqueeze(0)
-        # complex_y = complex_y.unsqueeze(0)
-        
+        intput = complex_x.unsqueeze(0)
+        output = residual.unsqueeze(0)
         
         if self.transforms:
-            x, y = self.transforms(complex_x,complex_y)
-            print(x.size(), y.size())   
-        return x, y
+            intput, output = self.transforms(intput,output)
+            # print(x.size(), y.size())   
+        return intput, output
     
     def __len__(self):
         return len(self.clear_tof_amp_names)

@@ -12,7 +12,7 @@ def loss_fn(output_image, target_image):
     y_phase = target_image.imag
     
     loss = 1/2 *(torch.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
-    loss[torch.isinf(loss)] = 0
+    # loss[torch.isinf(loss)] = 0
     batch_losses = []
     
     for batch_idx in range(loss.shape[0]):
@@ -52,7 +52,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
         optimizer.zero_grad()
         
         if scaler is not None:
-            scaler.scale(loss).backward()
+            scaler.scale(train_loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
@@ -62,7 +62,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
         lr_scheduler.step()
         
         lr = optimizer.param_groups[0]["lr"]
-        metric_logger.update(loss=loss.item(), lr=lr)
+        metric_logger.update(loss=train_loss.item(), lr=lr)
     
     return metric_logger.meters['loss'].global_avg, lr 
 
