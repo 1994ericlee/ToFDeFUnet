@@ -50,6 +50,11 @@ class ToFDataset(Dataset):
         self.fog_tof_amp_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_amp_names]
         self.fog_tof_pha_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_pha_names]
         
+        print(len(self.clear_tof_amp_npys_path))
+        print(len(self.clear_tof_pha_npys_path))
+        print(len(self.fog_tof_amp_npys_path))
+        print(len(self.fog_tof_pha_npys_path))
+        
         self.transforms = transforms
         
     def __getitem__(self, idx):
@@ -58,8 +63,8 @@ class ToFDataset(Dataset):
         fog_tof_amp_npy = np.load(self.fog_tof_amp_npys_path[idx])
         fog_tof_pha_npy = np.load(self.fog_tof_pha_npys_path[idx])
         
-        clear_tof_amp_npy = np.where(clear_tof_amp_npy == 0, 1, clear_tof_amp_npy)
-        fog_tof_amp_npy = np.where(fog_tof_amp_npy == 0, 1, fog_tof_amp_npy)
+        clear_tof_amp_npy = np.where(clear_tof_amp_npy == 0, 0.0001, clear_tof_amp_npy)
+        fog_tof_amp_npy = np.where(fog_tof_amp_npy == 0, 0.0001, fog_tof_amp_npy)
         
         x_amp = torch.from_numpy(fog_tof_amp_npy)
         y_amp = torch.from_numpy(clear_tof_amp_npy)
@@ -84,4 +89,5 @@ class ToFDataset(Dataset):
         return intput, output
     
     def __len__(self):
+        # print(len(self.clear_tof_amp_names))
         return len(self.clear_tof_amp_names)

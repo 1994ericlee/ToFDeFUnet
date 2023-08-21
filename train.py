@@ -32,7 +32,7 @@ class PresetTrain:
         if vflip_prob > 0:
             trans.append(T.RandomVerticalFlip(vflip_prob))
         trans.extend([
-            T.CenterCrop(crop_size),
+            # T.CenterCrop(crop_size),
             
             # T.Normalize(mean=mean, std=std),
         ])
@@ -54,7 +54,7 @@ class PresetEval:
 
 def get_transform(train, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
     base_size = 565
-    crop_size = 320
+    crop_size = 400
 
     if train:
         return PresetTrain(base_size, crop_size, mean=mean, std=std)
@@ -88,7 +88,7 @@ class TrainingApp:
         # self.cli_args = parser.parse_args(sys_argv)
         self.path = './data'
         self.batch_size = 5
-        self.epochs = 100
+        self.epochs = 30
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.num_workers = 4
@@ -121,7 +121,7 @@ class TrainingApp:
             batch_size *= torch.cuda.device_count()
 
         train_DL = torch.utils.data.DataLoader(train_dataset,
-                              batch_size=4,
+                              batch_size=self.batch_size,
                               shuffle=True,
                               num_workers=self.num_workers,
                               pin_memory=self.use_cuda)
@@ -135,7 +135,7 @@ class TrainingApp:
             batch_size *= torch.cuda.device_count()
 
         val_DL = torch.utils.data.DataLoader(val_dataset,
-                            batch_size=4,
+                            batch_size=self.batch_size,
                             num_workers=self.num_workers,
                             pin_memory=self.use_cuda)
         return val_DL
@@ -159,18 +159,18 @@ class TrainingApp:
                 self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
 
-            # with open(results_file, "a") as f:
-            #     train_info = f"[epoch: {epoch_ndx}]\n" \
-            #                 f"train_loss: {mean_loss:.4f}\n" \
-            #                 f"lr: {lr:.6f}\n"
-            #     f.write(train_info)
+            with open(results_file, "a") as f:
+                train_info = f"[epoch: {epoch_ndx}]\n" \
+                            f"train_loss: {mean_loss:.4f}\n" \
+                            f"lr: {lr:.6f}\n"
+                f.write(train_info)
 
-            # save_file = {"model": self.model.state_dict(),
-            #             "optimizer": self.optimizer.state_dict(),
-            #             "lr_scheduler": self.lr_scheduler.state_dict(),
-            #             "epoch": epoch_ndx,
-            #             # "args": args
-            #             }
+            save_file = {"model": self.model.state_dict(),
+                        "optimizer": self.optimizer.state_dict(),
+                        "lr_scheduler": self.lr_scheduler.state_dict(),
+                        "epoch": epoch_ndx,
+                        # "args": args
+                        }
 
             # if args.amp:
             #     save_file["scaler"] = scaler.state_dict()
@@ -179,6 +179,7 @@ class TrainingApp:
             #     torch.save(save_file, "./save_weights/best_model.pth")
             # else:
             #     torch.save(save_file, "./save_weights/model_{}.pth".format(epoch_ndx))
+            torch.save(save_file, "./save_weights/model_{}.pth".format(epoch_ndx))
 
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
