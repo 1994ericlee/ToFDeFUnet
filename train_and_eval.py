@@ -1,6 +1,7 @@
 import torch
 import distributed_utils as utils
 import numpy as np
+from Src.ComplexValuedAutoencoder_Class_Torch import Complex2foldloss, Complex2foldloss_Coh
 
 def loss_fn(output_image, target_image):
     # image has two dim (amp, phase)
@@ -42,12 +43,14 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     
+    criterion = Complex2foldloss(alpha=0.5)
+    
     for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
-        image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device)
+        image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device).type(torch.complex64)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
             output = model(image)
-            train_loss = loss_fn(output, target)
-            
+            # train_loss = loss_fn(output, target)
+            train_loss = criterion(output, target)
             
         optimizer.zero_grad()
         

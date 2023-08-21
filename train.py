@@ -9,6 +9,7 @@ import transforms as T
 
 from model import SimpleNet
 # from simple_model import SimpleNet
+from Src.ComplexValuedAutoencoderMain_Torch import end_to_end_Net
 from dataset import ToFDataset
 from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
 from util.logconf import logging
@@ -86,18 +87,19 @@ class TrainingApp:
 
         # self.cli_args = parser.parse_args(sys_argv)
         self.path = './data'
-        self.batch_size = 4
-        self.epochs = 50
+        self.batch_size = 5
+        self.epochs = 100
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
-        self.num_workers = 0
+        self.num_workers = 4
         self.model = self.initModel()
         self.optimizer = self.initOptimizer()
       
 
     def initModel(self):
         # model = Unet(input_channels=1, complex=True)
-        model = SimpleNet()
+        # model = SimpleNet()
+        model = end_to_end_Net(1,1,1,bilinear=True)
         if self.use_cuda:
             log.info("Using CUDA; {} devices.".format(
                 torch.cuda.device_count()))
