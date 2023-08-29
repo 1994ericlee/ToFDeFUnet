@@ -37,11 +37,12 @@ class PresetTrain:
 
 
 class PresetEval:
-    def __init__(self):
-        self.transforms = T.Compose([
-            # T.CenterCrop(256),
-            T.ToTensor(),
+    def __init__(self, crop_size):
+        trans = []
+        trans.extend([
+            T.CenterCrop(crop_size),
         ])
+        self.transforms = T.Compose(trans)
 
     def __call__(self, img, target):
         return self.transforms(img, target)
@@ -52,7 +53,7 @@ def get_transform(train):
     if train:
         return PresetTrain(crop_size)
     else:
-        return PresetEval()
+        return PresetEval(crop_size)
 
 class TrainingApp:
     def __init__(self, sys_argv=None):
@@ -121,6 +122,7 @@ class TrainingApp:
         
         train_DL = self.initTrainDL()
         val_DL = self.initValDL()
+        min_loss = 10000
 
         start_time = time.time()
         
@@ -129,6 +131,8 @@ class TrainingApp:
         for epoch_ndx in range(1, self.epochs + 1):
             loss, lr = train_one_epoch(self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
+            val_loss = evaluate(self.model, val_DL, self.device)
+
             with open(results_file, "a") as f:
                 train_info = f"[epoch: {epoch_ndx}]\n" \
                             f"train_loss: {loss:.4f}\n" \
@@ -141,7 +145,10 @@ class TrainingApp:
                         "epoch": epoch_ndx,
                         # "args": args
                         }
-
+            
+            if val_loss < min_loss:
+                min_loss = val_loss
+                torch.save(save_file, "save_weights/best_model.pth")
             # if args.amp:
             #     save_file["scaler"] = scaler.state_dict()
 
@@ -149,8 +156,6 @@ class TrainingApp:
             #     torch.save(save_file, "./save_weights/best_model.pth")
             # else:
             #     torch.save(save_file, "./save_weights/model_{}.pth".format(epoch_ndx))
-            
-        torch.save(save_file, "save_weights/best_model.pth")
 
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))

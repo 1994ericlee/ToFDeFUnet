@@ -29,12 +29,20 @@ def loss_fn(output_image, target_image):
 
 def evaluate(model, data_loader, device):
     model.eval()
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    header = 'Test:'
+    criterion = Complex2foldloss(alpha=0.5)
     with torch.no_grad():
-            val_output_image = model(val_input_image)
-            val_loss = loss_fn(val_output_image, val_target_image)
+        for val_input_tof, val_target_tof in metric_logger.log_every(data_loader, 3, header):
+            val_input_tof, val_target_tof = val_input_tof.to(device).type(torch.complex64), val_target_tof.to(device).type(torch.complex64)
+            val_output_tof = model(val_input_tof)
+            # val_loss = loss_fn(val_output_image, val_target_image)
+            val_loss = criterion(val_output_tof, val_target_tof)
             assert val_loss.requires_grad == False
+            
+            metric_logger.update(loss=val_loss.item())
     
-    return loss
+    return metric_logger.meters['loss'].global_avg
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, scaler):
     

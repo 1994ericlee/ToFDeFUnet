@@ -9,10 +9,10 @@ DistanceScale=[0,4000]
 
 def main():
     weights_path = 'save_weights/best_model.pth'
-    img_amp_path = 'data/predict/10_fog_amp.npy'
-    img_phase_path = 'data/predict/10_fog_phase.npy'
+    img_amp_path = 'data/predict/17__fog_amp.npy'
+    img_phase_path = 'data/predict/17__fog_phase.npy'
     
-    label_phase_path = 'data/predict/10__clear_phase.npy'
+    label_phase_path = 'data/predict/17__clear_phase.npy'
     
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
@@ -25,10 +25,10 @@ def main():
     label_phase = np.load(label_phase_path)
     
     input_dist = caldist(img_phase)
-    print("input_avg" + str(np.average(input_dist)))
+    print("input_avg:" + str(np.average(input_dist)))
     
     label_dist = caldist(label_phase)
-    print("label_avg" + str(np.average(label_dist)))
+    print("label_avg:" + str(np.average(label_dist)))
     
     img_amp = np.where(img_amp == 0, 1, img_amp)
     
@@ -51,7 +51,7 @@ def main():
     output_phase = np.squeeze(output_phase)
     
     predict_dist = caldist(output_phase)
-    print("predict_avg" + str(np.average(predict_dist)))
+    print("predict_avg:" + str(np.average(predict_dist)))
     predict_dist_rescaled = reScale(predict_dist, DistanceScale)
     plt.jet()
     plt.imshow(predict_dist_rescaled)
