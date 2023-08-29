@@ -4,29 +4,12 @@ import os
 import numpy as np
 import torch
 
-
-# class DataTransform:
-#     def __init__(self, train, target):
-#         self.transforms = T.Compose([
-#             T.CenterCrop(320),
-#             T.RandomHorizontalFlip(),
-#             T.RandomVerticalFlip(),
-#             T.ToTensor(),
-#         ])
-        
-#         # trans=[T.RandomCrop(320), T.ToTensor(), T.RandomHorizontalFlip()]
-#         # self.transforms = T.Compose(trans)
-        
-#     def __call__(self, x, y):
-#         return self.transforms(x, y)
-        
-
 class ToFDataset(Dataset):
     def __init__(self, root_dir, train: bool = True, transforms=None):
         assert os.path.exists(root_dir), f'{root_dir} does not exist'
         if train:
-            self.clear_tof_dir = os.path.join(root_dir, 'train', 'clear_tof')
-            self.fog_tof_dir = os.path.join(root_dir, 'train', 'fog_tof')
+            self.clear_tof_dir = os.path.join(root_dir, 'train', 'newclear_tof')
+            self.fog_tof_dir = os.path.join(root_dir, 'train', 'newfog_tof')
         else:
             self.clear_tof_dir = os.path.join(root_dir, 'val', 'clear_tof')
             self.fog_tof_dir = os.path.join(root_dir, 'val', 'fog_tof')
@@ -42,18 +25,15 @@ class ToFDataset(Dataset):
         assert len(self.fog_tof_amp_names) > 0, f'no .npy files in {self.fog_tof_dir}'
         assert len(self.fog_tof_pha_names) > 0, f'no .npy files in {self.fog_tof_dir}'
         
-        new_npys = []
-        
-        
         self.clear_tof_amp_npys_path = [os.path.join(self.clear_tof_dir, p) for p in self.clear_tof_amp_names]
         self.clear_tof_pha_npys_path = [os.path.join(self.clear_tof_dir, p) for p in self.clear_tof_pha_names]
         self.fog_tof_amp_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_amp_names]
         self.fog_tof_pha_npys_path = [os.path.join(self.fog_tof_dir, p) for p in self.fog_tof_pha_names]
         
-        print(len(self.clear_tof_amp_npys_path))
-        print(len(self.clear_tof_pha_npys_path))
-        print(len(self.fog_tof_amp_npys_path))
-        print(len(self.fog_tof_pha_npys_path))
+        print("clear_tof_amp_npys size:"+ str(len(self.clear_tof_amp_npys_path)))
+        print("clear_tof_pha_npys size:" + str(len(self.clear_tof_pha_npys_path)))
+        print("fog_tof_amp_npys_path size:" + str(len(self.fog_tof_amp_npys_path)))
+        print("fog_tof_pha_npys_path size:" + str(len(self.fog_tof_pha_npys_path)))
         
         self.transforms = transforms
         
@@ -63,29 +43,28 @@ class ToFDataset(Dataset):
         fog_tof_amp_npy = np.load(self.fog_tof_amp_npys_path[idx])
         fog_tof_pha_npy = np.load(self.fog_tof_pha_npys_path[idx])
         
-        clear_tof_amp_npy = np.where(clear_tof_amp_npy == 0, 0.0001, clear_tof_amp_npy)
-        fog_tof_amp_npy = np.where(fog_tof_amp_npy == 0, 0.0001, fog_tof_amp_npy)
+        clear_tof_amp_npy = np.where(clear_tof_amp_npy == 0, 1, clear_tof_amp_npy)
+        fog_tof_amp_npy = np.where(fog_tof_amp_npy == 0, 1, fog_tof_amp_npy)
         
         x_amp = torch.from_numpy(fog_tof_amp_npy)
         y_amp = torch.from_numpy(clear_tof_amp_npy)
-        
         x_phase = torch.from_numpy(fog_tof_pha_npy)
         y_phase = torch.from_numpy(clear_tof_pha_npy)
         
-        x_phase = x_phase + np.pi
-        y_phase = y_phase + np.pi
+        # x_phase = x_phase + np.pi
+        # y_phase = y_phase + np.pi
         
-        complex_x = x_amp * torch.exp(1j * x_phase)
-        complex_y = y_amp * torch.exp(1j * y_phase)   
+        complex_fog = x_amp * torch.exp(1j * x_phase)
+        complex_clear = y_amp * torch.exp(1j * y_phase)   
         
-        residual = complex_x - complex_y     
+        residual = complex_fog - complex_clear     
         
-        intput = complex_x.unsqueeze(0)
+        intput = complex_fog.unsqueeze(0)
         output = residual.unsqueeze(0)
         
         if self.transforms:
             intput, output = self.transforms(intput,output)
-            # print(x.size(), y.size())   
+            # print(intput.size(), output.size())   
         return intput, output
     
     def __len__(self):
