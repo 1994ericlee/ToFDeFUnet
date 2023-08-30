@@ -1,4 +1,4 @@
-# import torch
+import torch
 
 # # 创建两个矩阵
 # matrix1 = torch.tensor([[1.0, 2, 3],
@@ -44,12 +44,21 @@
 # a("222")
 
 import numpy as np
-A = 2
-pha = np.pi*2
+# A = 2
+# pha = np.pi*2
 
-s = A * np.exp(1j * pha)
-b = A * np.cos(pha) + 1j * A * np.sin(pha)
-x = np.cos(2*np.pi)
-x = np.sin
-print(s)
-print(x)
+# s = A * np.exp(1j * pha)
+# b = A * np.cos(pha) + 1j * A * np.sin(pha)
+# x = np.cos(2*np.pi)
+# x = np.sin
+# print(s)
+# print(x)
+
+z = torch.tensor([-1 -0.5j])
+m = torch.arctan2(z.imag, z.real)
+z_real = torch.angle(z).item()
+z_real2 = torch.real(z).item()
+a = torch.angle(z)
+print(a)
+print(z_real)
+print(z_real2)

@@ -6,13 +6,16 @@ from Src.ComplexValuedAutoencoder_Class_Torch import Complex2foldloss, Complex2f
 def loss_fn(output_image, target_image):
     # image has two dim (amp, phase)
     
-    y_amp_hat = output_image.real
-    y_phase_hat = output_image.imag
+    amp  = torch.abs(output_image)
+    amp_hat = torch.abs(target_image)
     
-    y_amp = target_image.real
-    y_phase = target_image.imag
+    phase = torch.angle(output_image)
+    phase_hat = torch.angle(target_image)
     
-    loss = 1/2 *(torch.log(y_amp_hat/y_amp)**2 + (y_phase_hat - y_phase)**2)
+    amp_diff = amp_hat/amp
+    amp_diff = torch.where(amp_diff==0, 0.0001, amp_diff)
+    phase_diff = phase_hat - phase
+    loss = 1/2 *(torch.log(amp_diff)**2 + (phase_diff)**2)
     # loss[torch.isinf(loss)] = 0
     batch_losses = []
     
@@ -36,8 +39,8 @@ def evaluate(model, data_loader, device):
         for val_input_tof, val_target_tof in metric_logger.log_every(data_loader, 3, header):
             val_input_tof, val_target_tof = val_input_tof.to(device).type(torch.complex64), val_target_tof.to(device).type(torch.complex64)
             val_output_tof = model(val_input_tof)
-            # val_loss = loss_fn(val_output_image, val_target_image)
-            val_loss = criterion(val_output_tof, val_target_tof)
+            val_loss = loss_fn(val_output_tof, val_target_tof)
+            # val_loss = criterion(val_output_tof, val_target_tof)
             assert val_loss.requires_grad == False
             
             metric_logger.update(loss=val_loss.item())
@@ -51,14 +54,15 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
     
+    
     criterion = Complex2foldloss(alpha=0.5)
     
     for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
         image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device).type(torch.complex64)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
             output = model(image)
-            # train_loss = loss_fn(output, target)
-            train_loss = criterion(output, target)
+            train_loss = loss_fn(output, target)
+            # train_loss = criterion(output, target)
             
         optimizer.zero_grad()
         
@@ -74,6 +78,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
         
         lr = optimizer.param_groups[0]["lr"]
         metric_logger.update(loss=train_loss.item(), lr=lr)
+       
     
     return metric_logger.meters['loss'].global_avg, lr 
 

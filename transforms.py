@@ -10,6 +10,7 @@ class Compose():
         self.transforms = transforms
 
     def __call__(self, image, target):
+        
         for t in self.transforms:
             image, target = t(image, target)
         return image, target
@@ -43,6 +44,26 @@ class CenterCrop():
         image = F.center_crop(image, self.size)
         target = F.center_crop(target, self.size)
         return image, target
+    
+class FiveCrop():
+    def __init__(self, size):
+        self.size = size
+    
+    def __call__(self, image, target):
+        image = F.five_crop(image, self.size)
+        target = F.five_crop(target, self.size)
+        return image, target
+    
+class RandomCrop(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, image, target):
+        crop_params = T.RandomCrop.get_params(image, (self.size, self.size))
+        image = F.crop(image, *crop_params)
+        target = F.crop(target, *crop_params)
+        return image, target
+  
     
 
 class ToTensor():

@@ -6,6 +6,8 @@ import torch.utils.data.dataloader as DataLoader
 import sys
 import argparse
 import transforms as T
+import matplotlib.pyplot as plt
+import numpy as np
 
 from model import SimpleNet
 # from simple_model import SimpleNet
@@ -14,13 +16,14 @@ from dataset import ToFDataset
 from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
 from util.logconf import logging
 
+
 log = logging.getLogger(__name__)
 # log.setLevel(logging.WARN)
 log.setLevel(logging.INFO)
 log.setLevel(logging.DEBUG)
 
 class PresetTrain:
-    def __init__(self, crop_size, hflip_prob=1, vflip_prob=0.5):
+    def __init__(self, crop_size, hflip_prob=0.5, vflip_prob=0.5):
         
         trans = []
         if hflip_prob > 0:
@@ -28,12 +31,14 @@ class PresetTrain:
         if vflip_prob > 0:
             trans.append(T.RandomVerticalFlip(vflip_prob))
         trans.extend([
-            T.CenterCrop(crop_size),   
+            T.RandomCrop(crop_size),
+            
         ])
         self.transforms = T.Compose(trans)
 
     def __call__(self, img, target):
-        return self.transforms(img, target)
+        a = self.transforms(img, target)
+        return a
 
 
 class PresetEval:
@@ -64,7 +69,7 @@ class TrainingApp:
         self.lr = 0.0001
         self.path = './data'
         self.batch_size = 5
-        self.epochs = 30
+        self.epochs = 50
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.num_workers = 4
@@ -116,6 +121,23 @@ class TrainingApp:
                             pin_memory=self.use_cuda)
         return val_DL
 
+    def showPlt(self, train_losses, val_losses):
+        epochs = np.arange(1, self.epochs+1)
+        plt.figure()
+        plt.plot(epochs, train_losses, label='train_losses')
+        plt.xlabel('Epochs')
+        plt.ylabel('train_losses')
+        plt.title('Training Loss')
+        plt.legend()
+        
+        plt.figure()
+        plt.plot(epochs, val_losses, label='val_losses')
+        plt.xlabel('Epochs')
+        plt.ylabel('val_losses')
+        plt.title('Validation Loss')
+        plt.legend()
+        
+        plt.show()    
     def main(self):
         # log.info("Starting {}, {}".format(type(self).__name__, self.cli_args))
         results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
@@ -125,19 +147,23 @@ class TrainingApp:
         min_loss = 10000
 
         start_time = time.time()
-        
+        train_losses = []
+        val_losses = []
         self.lr_scheduler = create_lr_scheduler(self.optimizer, num_step=len(train_DL), epochs=self.epochs, warmup=True)
         
         for epoch_ndx in range(1, self.epochs + 1):
             loss, lr = train_one_epoch(self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
             val_loss = evaluate(self.model, val_DL, self.device)
-
-            with open(results_file, "a") as f:
-                train_info = f"[epoch: {epoch_ndx}]\n" \
-                            f"train_loss: {loss:.4f}\n" \
-                            f"lr: {lr:.6f}\n"
-                f.write(train_info)
+            
+            train_losses.append(loss)
+            val_losses.append(val_loss)
+            
+            # with open(results_file, "a") as f:
+            #     train_info = f"[epoch: {epoch_ndx}]\n" \
+            #                 f"train_loss: {loss:.4f}\n" \
+            #                 f"lr: {lr:.6f}\n"
+            #     f.write(train_info)
 
             save_file = {"model": self.model.state_dict(),
                         "optimizer": self.optimizer.state_dict(),
@@ -149,6 +175,7 @@ class TrainingApp:
             if val_loss < min_loss:
                 min_loss = val_loss
                 torch.save(save_file, "save_weights/best_model.pth")
+            # torch.save(save_file, "./save_weights/model_{}.pth".format(epoch_ndx))
             # if args.amp:
             #     save_file["scaler"] = scaler.state_dict()
 
@@ -157,9 +184,11 @@ class TrainingApp:
             # else:
             #     torch.save(save_file, "./save_weights/model_{}.pth".format(epoch_ndx))
 
+        
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print("Training time {}".format(total_time_str))
+        self.showPlt(train_losses, val_losses)
 
     # def doTraining(self, epoch_ndx, train_DL):
     #     self.model.train()

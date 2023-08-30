@@ -24,23 +24,39 @@ def main():
     img_phase = np.load(img_phase_path)
     label_phase = np.load(label_phase_path)
     
-    input_dist = caldist(img_phase)
+    amp_center_x = (img_amp.shape[0] // 2)+100
+    amp_center_y = (img_amp.shape[1] // 2)+100
+    phase_center_x = (img_phase.shape[0] // 2) + 100
+    phase_center_y = (img_phase.shape[1] // 2) + 100
+    
+    half_size = 256 // 2
+    
+    amp_center_matrix =  img_amp[amp_center_x - half_size: amp_center_x + half_size,
+                            amp_center_y - half_size: amp_center_y + half_size]
+    
+    phase_center_matrix = img_phase[phase_center_x - half_size: phase_center_x + half_size,
+                            phase_center_y - half_size: phase_center_y + half_size]
+    
+    label_phase_center_matrix = label_phase[phase_center_x - half_size: phase_center_x + half_size,
+                            phase_center_y - half_size: phase_center_y + half_size]
+                                            
+    
+    input_dist = caldist(phase_center_matrix)
     print("input_avg:" + str(np.average(input_dist)))
     
-    label_dist = caldist(label_phase)
+    label_dist = caldist(label_phase_center_matrix)
     print("label_avg:" + str(np.average(label_dist)))
     
-    img_amp = np.where(img_amp == 0, 1, img_amp)
+    amp_center_matrix = np.where(amp_center_matrix == 0, 1, amp_center_matrix)
     
-    x_amp = torch.from_numpy(img_amp)
-    x_phase = torch.from_numpy(img_phase)
+    x_amp = torch.from_numpy(amp_center_matrix)
+    x_phase = torch.from_numpy(phase_center_matrix)
     
     complex_x = x_amp * torch.exp(1j*x_phase)
-    
-    
+
     input = complex_x.unsqueeze(0)
     input = input.to(device, dtype=torch.complex64)
-    
+    ##model predict
     model.eval()
     with torch.no_grad():
         output = model(input)
@@ -49,13 +65,47 @@ def main():
     output_phase = torch.angle(output)
     output_phase = output_phase.cpu().numpy()
     output_phase = np.squeeze(output_phase)
-    
     predict_dist = caldist(output_phase)
     print("predict_avg:" + str(np.average(predict_dist)))
+    
+    ##show plt
+   
     predict_dist_rescaled = reScale(predict_dist, DistanceScale)
+    plt.subplot(2,3,1)
     plt.jet()
     plt.imshow(predict_dist_rescaled)
+    plt.title('Predict')
+    
+    input_dist_rescaled = reScale(input_dist, DistanceScale)
+    label_dist_rescaled = reScale(label_dist, DistanceScale)
+    plt.subplot(2,3,2)
+    plt.imshow(input_dist_rescaled)
+    plt.title('Fog')
+   
+    plt.subplot(2,3,3)
+    plt.imshow(label_dist_rescaled)
+    plt.title('Clear')
+    
+    plt.subplot(2,3,4)
+    plt.imshow(predict_dist)
+    plt.title('Predict dist' + str(np.floor(np.average(predict_dist))))
+    plt.xticks([])
+    plt.yticks([])
+    
+    plt.subplot(2,3,5)
+    plt.imshow(input_dist)
+    plt.title('Fog dist'+ str(np.floor(np.average(input_dist))))
+    plt.xticks([])
+    plt.yticks([])
+    
+    plt.subplot(2,3,6)
+    plt.imshow(label_dist)
+    plt.title('Clear dist' + str(np.floor(np.average(label_dist))))
+    plt.xticks([])
+    plt.yticks([])
+    
     plt.show()
+    
     
 def caldist(output_phase):
     unAmbiguousRange = (0.5*299792458)/(40*1000)
