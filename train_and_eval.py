@@ -13,10 +13,29 @@ def loss_fn(output_image, target_image):
     phase_hat = torch.angle(target_image)
     
     amp_diff = amp_hat/amp
-    amp_diff = torch.where(amp_diff==0, 0.0001, amp_diff)
+    amp_diff = torch.where(amp_diff==0, 1, amp_diff)
     phase_diff = phase_hat - phase
     loss = 1/2 *(torch.log(amp_diff)**2 + (phase_diff)**2)
     # loss[torch.isinf(loss)] = 0
+    # batch_losses = []
+    
+    # for batch_idx in range(loss.shape[0]):
+    # # 获取当前 batch 的损失值张量切片
+    #     batch_loss_slice = loss[batch_idx, 0, :, :]
+    
+    # # 计算损失值的平均值
+    #     batch_loss = torch.mean(batch_loss_slice)
+    #     batch_losses.append(batch_loss)
+        
+    # total_loss = torch.stack(batch_losses).sum()
+    total_loss = torch.mean(loss)
+    return total_loss
+
+def loss_mse(output_image, target_image):
+    # image has two dim (amp, phase)
+
+    loss = torch.nn.MSELoss()(output_image, target_image)
+    
     batch_losses = []
     
     for batch_idx in range(loss.shape[0]):
@@ -53,10 +72,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    
-    
     criterion = Complex2foldloss(alpha=0.5)
-    
     for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
         image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device).type(torch.complex64)
         with torch.cuda.amp.autocast(enabled = scaler is not None):

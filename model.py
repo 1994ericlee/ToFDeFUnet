@@ -105,8 +105,6 @@ class Unet(nn.Module):
     def __init__(self, input_channels=1, complex=False, base_channel=64, model_depth=8, padding_mode="zeros"):
         super().__init__()
         
-        # if complex:
-        #     model_complexity = int(model_complexity / 1.414) 
         base_channel = 64
         self.complex = complex
         self.set_size(base_channel, model_depth, input_channels)

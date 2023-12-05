@@ -61,21 +61,21 @@ class end_to_end_Net(nn.Module):
         # self.outc2 = Complex_Linear(in_channels=100, out_channels=n_classes, activation="sigmoid")
         # self.outc3 = Complex_Softmax()
 
-        self.conv1 = ComplexConv2d(in_channels=128, out_channels=200, kernel_size=3, stride=1, padding='same',
-                      dilation=1, groups=1, bias=True)
-        self.ReLU1 = ComplexReLU()
-        self.pool1 = Complexavg_pool2d(kernel_size=2, stride=None, padding=0,
-                              dilation=1, return_indices=False, ceil_mode=False,
-                              count_include_pad=True, divisor_override=None)
-        self.conv2 = ComplexConv2d(in_channels=200, out_channels=256, kernel_size=3, stride=1, padding='same',
-                                     dilation=1, groups=1, bias=True)
-        self.ReLU2 = ComplexReLU()
-        self.flat1 = Complex_Flatten()
-        self.lin1 = Complex_Linear(in_channels=2304, out_channels=2000, activation="relu")
-        self.lin2 = Complex_Linear(in_channels=2000, out_channels=1000, activation="relu")
-        self.lin3 = Complex_Linear(in_channels=1000, out_channels=500, activation="relu")
-        self.lin4 = Complex_Linear(in_channels=500, out_channels=100, activation="relu")
-        self.out1 = Complex_Linear(in_channels=100, out_channels=n_classes, activation="None")
+        # self.conv1 = ComplexConv2d(in_channels=128, out_channels=200, kernel_size=3, stride=1, padding='same',
+        #               dilation=1, groups=1, bias=True)
+        # self.ReLU1 = ComplexReLU()
+        # self.pool1 = Complexavg_pool2d(kernel_size=2, stride=None, padding=0,
+        #                       dilation=1, return_indices=False, ceil_mode=False,
+        #                       count_include_pad=True, divisor_override=None)
+        # self.conv2 = ComplexConv2d(in_channels=200, out_channels=256, kernel_size=3, stride=1, padding='same',
+        #                              dilation=1, groups=1, bias=True)
+        # self.ReLU2 = ComplexReLU()
+        # self.flat1 = Complex_Flatten()
+        # self.lin1 = Complex_Linear(in_channels=2304, out_channels=2000, activation="relu")
+        # self.lin2 = Complex_Linear(in_channels=2000, out_channels=1000, activation="relu")
+        # self.lin3 = Complex_Linear(in_channels=1000, out_channels=500, activation="relu")
+        # self.lin4 = Complex_Linear(in_channels=500, out_channels=100, activation="relu")
+        # self.out1 = Complex_Linear(in_channels=100, out_channels=n_classes, activation="None")
 
 
 

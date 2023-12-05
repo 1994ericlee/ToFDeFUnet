@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from model import SimpleNet
-# from simple_model import SimpleNet
 from Src.ComplexValuedAutoencoderMain_Torch import end_to_end_Net
 from dataset import ToFDataset
 from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
@@ -23,22 +22,18 @@ log.setLevel(logging.INFO)
 log.setLevel(logging.DEBUG)
 
 class PresetTrain:
-    def __init__(self, crop_size, hflip_prob=0.5, vflip_prob=0.5):
+    def __init__(self, crop_size, hflip_prob=0.5):
         
         trans = []
         if hflip_prob > 0:
             trans.append(T.RandomHorizontalFlip(hflip_prob))
-        if vflip_prob > 0:
-            trans.append(T.RandomVerticalFlip(vflip_prob))
         trans.extend([
             T.RandomCrop(crop_size),
-            
         ])
         self.transforms = T.Compose(trans)
 
     def __call__(self, img, target):
-        a = self.transforms(img, target)
-        return a
+        return self.transforms(img, target)
 
 
 class PresetEval:
@@ -68,11 +63,11 @@ class TrainingApp:
             
         self.lr = 0.0001
         self.path = './data'
-        self.batch_size = 5
-        self.epochs = 50
+        self.batch_size = 32
+        self.epochs = 100
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
-        self.num_workers = 4
+        self.num_workers = 8
         self.model = self.initModel()
         self.optimizer = self.initOptimizer(self.lr)
       
@@ -80,7 +75,7 @@ class TrainingApp:
     def initModel(self):
         # model = Unet(input_channels=1, complex=True)
         # model = SimpleNet()
-        model = end_to_end_Net(1,1,1,bilinear=True)
+        model = end_to_end_Net(1,1,0,bilinear=True)
         if self.use_cuda:
             log.info("Using CUDA; {} devices.".format(
                 torch.cuda.device_count()))
@@ -97,10 +92,6 @@ class TrainingApp:
     def initTrainDL(self):
         train_dataset = ToFDataset(self.path, train=True, transforms=get_transform(train=True))
 
-        batch_size = self.batch_size
-        if self.use_cuda:
-            batch_size *= torch.cuda.device_count()
-
         train_DL = torch.utils.data.DataLoader(train_dataset,
                               batch_size=self.batch_size,
                               shuffle=True,
@@ -110,10 +101,6 @@ class TrainingApp:
 
     def initValDL(self):
         val_dataset = ToFDataset(self.path, train=False, transforms=get_transform(train=False))
-
-        batch_size = self.batch_size
-        if self.use_cuda:
-            batch_size *= torch.cuda.device_count()
 
         val_DL = torch.utils.data.DataLoader(val_dataset,
                             batch_size=self.batch_size,
@@ -152,18 +139,12 @@ class TrainingApp:
         self.lr_scheduler = create_lr_scheduler(self.optimizer, num_step=len(train_DL), epochs=self.epochs, warmup=True)
         
         for epoch_ndx in range(1, self.epochs + 1):
-            loss, lr = train_one_epoch(self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
+            train_loss, lr = train_one_epoch(self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
             val_loss = evaluate(self.model, val_DL, self.device)
             
-            train_losses.append(loss)
+            train_losses.append(train_loss)
             val_losses.append(val_loss)
-            
-            # with open(results_file, "a") as f:
-            #     train_info = f"[epoch: {epoch_ndx}]\n" \
-            #                 f"train_loss: {loss:.4f}\n" \
-            #                 f"lr: {lr:.6f}\n"
-            #     f.write(train_info)
 
             save_file = {"model": self.model.state_dict(),
                         "optimizer": self.optimizer.state_dict(),
@@ -190,8 +171,6 @@ class TrainingApp:
         print("Training time {}".format(total_time_str))
         self.showPlt(train_losses, val_losses)
 
-    # def doTraining(self, epoch_ndx, train_DL):
-    #     self.model.train()
 
 if __name__ == '__main__':
     if not os.path.exists('./save_weights'):
