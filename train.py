@@ -11,6 +11,7 @@ import numpy as np
 
 from model import SimpleNet
 from Src.ComplexValuedAutoencoderMain_Torch import end_to_end_Net
+from realModel import RealToFDeFNet
 from dataset import ToFDataset
 from train_and_eval import train_one_epoch, evaluate, create_lr_scheduler
 from util.logconf import logging
@@ -62,12 +63,14 @@ class TrainingApp:
             sys_argv = sys.argv[1:]
             
         self.lr = 0.0001
-        self.path = './data'
-        self.batch_size = 32
-        self.epochs = 100
+        # self.path = './data'
+        self.path = './syn_data'
+        self.batch_size = 20
+        self.epochs = 20
         self.use_cuda = torch.cuda.is_available()
         self.device = torch.device('cuda' if self.use_cuda else 'cpu')
         self.num_workers = 8
+        self.isComplexModel = False
         self.model = self.initModel()
         self.optimizer = self.initOptimizer(self.lr)
       
@@ -75,7 +78,11 @@ class TrainingApp:
     def initModel(self):
         # model = Unet(input_channels=1, complex=True)
         # model = SimpleNet()
-        model = end_to_end_Net(1,1,0,bilinear=True)
+        if self.isComplexModel:
+            model = end_to_end_Net(1,1,0,bilinear=True)
+        else:
+            model = RealToFDeFNet(2,2, bilinear=True)
+            
         if self.use_cuda:
             log.info("Using CUDA; {} devices.".format(
                 torch.cuda.device_count()))
@@ -90,7 +97,7 @@ class TrainingApp:
     
 
     def initTrainDL(self):
-        train_dataset = ToFDataset(self.path, train=True, transforms=get_transform(train=True))
+        train_dataset = ToFDataset(self.path, train=True, transforms=get_transform(train=True), isComplexModel=self.isComplexModel)
 
         train_DL = torch.utils.data.DataLoader(train_dataset,
                               batch_size=self.batch_size,
@@ -100,7 +107,7 @@ class TrainingApp:
         return train_DL
 
     def initValDL(self):
-        val_dataset = ToFDataset(self.path, train=False, transforms=get_transform(train=False))
+        val_dataset = ToFDataset(self.path, train=False, transforms=get_transform(train=False), isComplexModel=self.isComplexModel)
 
         val_DL = torch.utils.data.DataLoader(val_dataset,
                             batch_size=self.batch_size,
@@ -139,9 +146,9 @@ class TrainingApp:
         self.lr_scheduler = create_lr_scheduler(self.optimizer, num_step=len(train_DL), epochs=self.epochs, warmup=True)
         
         for epoch_ndx in range(1, self.epochs + 1):
-            train_loss, lr = train_one_epoch(self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
+            train_loss, lr = train_one_epoch(self.isComplexModel, self.model, self.optimizer, train_DL, self.device, epoch_ndx, self.lr_scheduler, scaler=None)
             
-            val_loss = evaluate(self.model, val_DL, self.device)
+            val_loss = evaluate(self.isComplexModel, self.model, val_DL, self.device)
             
             train_losses.append(train_loss)
             val_losses.append(val_loss)

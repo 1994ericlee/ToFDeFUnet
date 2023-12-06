@@ -1,6 +1,7 @@
 import torch
 import distributed_utils as utils
 import numpy as np
+import torch.nn as nn
 from Src.ComplexValuedAutoencoder_Class_Torch import Complex2foldloss, Complex2foldloss_Coh
 
 def loss_fn(output_image, target_image):
@@ -31,34 +32,37 @@ def loss_fn(output_image, target_image):
     total_loss = torch.mean(loss)
     return total_loss
 
-def loss_mse(output_image, target_image):
-    # image has two dim (amp, phase)
-
-    loss = torch.nn.MSELoss()(output_image, target_image)
-    
-    batch_losses = []
-    
-    for batch_idx in range(loss.shape[0]):
-    # 获取当前 batch 的损失值张量切片
-        batch_loss_slice = loss[batch_idx, 0, :, :]
-    
-    # 计算损失值的平均值
-        batch_loss = torch.mean(batch_loss_slice)
-        batch_losses.append(batch_loss)
+def loss_mse(output_image, target_image, isComplexModel):
+    alpha = 0.1
+    loss = nn.MSELoss(reduction = 'mean')
+    lossl1 = nn.L1Loss(reduction = 'mean')
+    if isComplexModel:
+        loss_r = loss(output_image.real, target_image.real)
+        loss_i = loss(output_image.imag, target_image.imag)
+        loss_total = (loss_r + loss_i)/2
+    else:
+        output_amp, output_depth = output_image[:,0,:,:], output_image[:,1,:,:]
+        target_amp, target_depth = target_image[:,0,:,:], target_image[:,1,:,:]
         
-    total_loss = torch.stack(batch_losses).sum()
-    return total_loss
+        
+        loss_amp = lossl1(output_amp, target_amp)
+        loss_depth = lossl1(output_depth, target_depth)
+        loss_total = (alpha*loss_amp + (1-alpha)*loss_depth)
+    return loss_total
 
-def evaluate(model, data_loader, device):
+def evaluate(isComplexModel, model, data_loader, device):
     model.eval()
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = 'Test:'
     criterion = Complex2foldloss(alpha=0.5)
     with torch.no_grad():
         for val_input_tof, val_target_tof in metric_logger.log_every(data_loader, 3, header):
-            val_input_tof, val_target_tof = val_input_tof.to(device).type(torch.complex64), val_target_tof.to(device).type(torch.complex64)
+            if isComplexModel:
+                val_input_tof, val_target_tof = val_input_tof.to(device).type(torch.complex64), val_target_tof.to(device).type(torch.complex64)
+            else:
+                val_input_tof, val_target_tof = val_input_tof.to(device).type(torch.float32), val_target_tof.to(device).type(torch.float32)
             val_output_tof = model(val_input_tof)
-            val_loss = loss_fn(val_output_tof, val_target_tof)
+            val_loss = loss_mse(val_output_tof, val_target_tof, isComplexModel)
             # val_loss = criterion(val_output_tof, val_target_tof)
             assert val_loss.requires_grad == False
             
@@ -66,7 +70,7 @@ def evaluate(model, data_loader, device):
     
     return metric_logger.meters['loss'].global_avg
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, scaler):
+def train_one_epoch(isComplexModel, model, optimizer, data_loader, device, epoch, lr_scheduler, scaler):
     
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -74,10 +78,13 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, lr_scheduler, 
     header = 'Epoch: [{}]'.format(epoch)
     criterion = Complex2foldloss(alpha=0.5)
     for train_input_tof, train_target_tof in metric_logger.log_every(data_loader, 10, header):
-        image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device).type(torch.complex64)
+        if isComplexModel:
+            image, target = train_input_tof.to(device).type(torch.complex64), train_target_tof.to(device).type(torch.complex64)
+        else:
+            image, target = train_input_tof.to(device).type(torch.float32), train_target_tof.to(device).type(torch.float32)
         with torch.cuda.amp.autocast(enabled = scaler is not None):
             output = model(image)
-            train_loss = loss_fn(output, target)
+            train_loss = loss_mse(output, target, isComplexModel)
             # train_loss = criterion(output, target)
             
         optimizer.zero_grad()
