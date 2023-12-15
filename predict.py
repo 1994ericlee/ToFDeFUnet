@@ -97,8 +97,8 @@ def main():
         input_fog = complex_input.unsqueeze(0)
         input_fog = input_fog.to(device, dtype=torch.complex64)
     else:
-        fog_dist = torch.from_numpy(fog_dist)
-        input_fog = torch.stack((input_amp, fog_dist), dim=0)
+        fog_dist_tensor = torch.from_numpy(fog_dist)
+        input_fog = torch.stack((input_amp, fog_dist_tensor), dim=0)
         input_fog = input_fog.unsqueeze(0)
         input_fog = input_fog.to(device, dtype=torch.float32)
         
@@ -133,7 +133,6 @@ def main():
     
     #Abosolute Error
     predict_abs_error = np.abs(label_dist - predict_dist)
-    fog_dist = fog_dist.cpu().numpy()
     fog_abs_error = np.abs(label_dist - fog_dist)
     clear_abs_error = np.abs(label_dist - label_dist)
     
